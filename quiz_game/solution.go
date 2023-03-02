@@ -2,21 +2,21 @@ package main
 
 import (
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
-func main() {
-	var userAnswer string
+func quiz() (int, int, int, error) {
+	var userInput string
 	var numCorrect, numIncorrect int
-
-	fmt.Printf("Starting Quiz App\n")
 	// open file
 	f, err := os.Open("problems.csv")
 	if err != nil {
-		log.Fatal(err)
+		return 0, 0, 0, err
 	}
 
 	defer f.Close()
@@ -31,22 +31,38 @@ func main() {
 		}
 
 		if err != nil {
-			log.Fatal(err)
+			return 0, 0, 0, err
 		}
 
 		// Get User Input
 		fmt.Printf("Write answer for %s\n", row[0])
-		fmt.Scanln(&userAnswer)
+		fmt.Scanln(&userInput)
 
 		// track results
-		if userAnswer == row[1] {
+		if strings.TrimSpace(userInput) == row[1] {
 			numCorrect += 1
 		} else {
 			numIncorrect += 1
 		}
 	}
+	return numCorrect, numIncorrect, numCorrect + numIncorrect, nil
+}
+
+func main() {
+	var userInput string
+	defaultTime := flag.Int("timeout", 30, "specify timeout in seconds")
+	flag.Parse()
+
+	fmt.Printf("Press Enter to start the quiz app. You will have %d seconds to complete\n", *defaultTime)
+	fmt.Scanln(&userInput)
+
+	numCorrect, numIncorrect, total, err := quiz()
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	fmt.Printf("Number of correct Answers: %d\n", numCorrect)
 	fmt.Printf("Number of incorrect Answers: %d\n", numIncorrect)
-	fmt.Printf("Total number of questions: %d\n", numCorrect+numIncorrect)
+	fmt.Printf("Total number of questions: %d\n", total)
 }
