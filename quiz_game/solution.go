@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -12,22 +11,37 @@ import (
 )
 type Result struct {
 	numCorrect int
-	numIncorrect int
 	total int
 }
 
-func newResult(numCorrect int, numIncorrect int, total int) *Result{
+func newResult(total int) *Result{
 	r := Result{
-		numCorrect: numCorrect,
-		numIncorrect: numIncorrect,
+		numCorrect: 0,
 		total: total,
 	}
 	return &r
 }
 
-func quiz(ch chan *Result) {
+func quiz(rows [][]string, result *Result, ch chan string) {
 	var userInput string
-	var numCorrect, numIncorrect int
+
+	for _, row := range rows {
+		// Get User Input
+		fmt.Printf("Write answer for %s\n", row[0])
+		fmt.Scanln(&userInput)
+
+		// track Results
+		if strings.TrimSpace(userInput) == row[1] {
+			result.numCorrect += 1
+		}
+	}
+	ch <- "ok"
+}
+
+func main() {
+	var userInput string
+	defaultTime := flag.Int("timeout", 30, "specify timeout in seconds")
+	flag.Parse()
 	// open file
 	f, err := os.Open("problems.csv")
 	if err != nil {
@@ -37,50 +51,28 @@ func quiz(ch chan *Result) {
 	defer f.Close()
 
 	csvReader := csv.NewReader(f)
+	rows, err := csvReader.ReadAll()
 
-	for {
-		// Read row
-		row, err := csvReader.Read()
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Get User Input
-		fmt.Printf("Write answer for %s\n", row[0])
-		fmt.Scanln(&userInput)
-
-		// track Results
-		if strings.TrimSpace(userInput) == row[1] {
-			numCorrect += 1
-		} else {
-			numIncorrect += 1
-		}
+	if err != nil{
+		log.Fatal(err)
 	}
-	ch <- newResult(numCorrect, numIncorrect, numCorrect+numIncorrect)
-}
 
-func main() {
-	var userInput string
-	defaultTime := flag.Int("timeout", 30, "specify timeout in seconds")
-	flag.Parse()
+	result := newResult(len(rows))
 
-	fmt.Printf("Press Enter to start the quiz app. You will have %d seconds to complete\n", *defaultTime)
+	fmt.Printf("Press Enter to start the quiz app. You will have %d seconds to complete %d questions\n", *defaultTime, result.total)
 	fmt.Scanln(&userInput)
 
-	ch := make(chan *Result)
-	go quiz(ch)
+	ch := make(chan string)
+	go quiz(rows, result, ch)
 
 	select {
-	case result := <-ch:
-		fmt.Printf("Number of correct Answers: %d\n", result.numCorrect)
-		fmt.Printf("Number of incorrect Answers: %d\n", result.numIncorrect)
-		fmt.Printf("Total number of questions: %d\n", result.total)
+	case <-ch:
+		fmt.Printf("Quiz complete\n")
 	case <- time.After(time.Second * time.Duration(*defaultTime)):
-		fmt.Printf("Quiz timed out")
+		fmt.Printf("Quiz timed out\n")
 	}
 
+	fmt.Printf("Number of correct Answers: %d\n", result.numCorrect)
+	fmt.Printf("Number of incorrect Answers: %d\n", result.total - result.numCorrect)
+	fmt.Printf("Total number of questions: %d\n", result.total)
 }
