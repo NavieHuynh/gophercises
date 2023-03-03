@@ -40,8 +40,10 @@ func quiz(rows [][]string, result *Result, ch chan string) {
 
 func main() {
 	var userInput string
+	// get user defined timeout
 	defaultTime := flag.Int("timeout", 30, "specify timeout in seconds")
 	flag.Parse()
+
 	// open file
 	f, err := os.Open("problems.csv")
 	if err != nil {
@@ -50,6 +52,7 @@ func main() {
 
 	defer f.Close()
 
+	// read rows in the file
 	csvReader := csv.NewReader(f)
 	rows, err := csvReader.ReadAll()
 
@@ -62,6 +65,7 @@ func main() {
 	fmt.Printf("Press Enter to start the quiz app. You will have %d seconds to complete %d questions\n", *defaultTime, result.total)
 	fmt.Scanln(&userInput)
 
+	// start quiz in goroutine
 	ch := make(chan string)
 	go quiz(rows, result, ch)
 
@@ -72,6 +76,7 @@ func main() {
 		fmt.Printf("Quiz timed out\n")
 	}
 
+	// print results
 	fmt.Printf("Number of correct Answers: %d\n", result.numCorrect)
 	fmt.Printf("Number of incorrect Answers: %d\n", result.total - result.numCorrect)
 	fmt.Printf("Total number of questions: %d\n", result.total)
