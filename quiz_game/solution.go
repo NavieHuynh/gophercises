@@ -8,15 +8,30 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 )
+type Result struct {
+	numCorrect int
+	numIncorrect int
+	total int
+}
 
-func quiz() (int, int, int, error) {
+func newResult(numCorrect int, numIncorrect int, total int) *Result{
+	r := Result{
+		numCorrect: numCorrect,
+		numIncorrect: numIncorrect,
+		total: total,
+	}
+	return &r
+}
+
+func quiz(ch chan *Result) {
 	var userInput string
 	var numCorrect, numIncorrect int
 	// open file
 	f, err := os.Open("problems.csv")
 	if err != nil {
-		return 0, 0, 0, err
+		log.Fatal(err)
 	}
 
 	defer f.Close()
@@ -31,21 +46,21 @@ func quiz() (int, int, int, error) {
 		}
 
 		if err != nil {
-			return 0, 0, 0, err
+			log.Fatal(err)
 		}
 
 		// Get User Input
 		fmt.Printf("Write answer for %s\n", row[0])
 		fmt.Scanln(&userInput)
 
-		// track results
+		// track Results
 		if strings.TrimSpace(userInput) == row[1] {
 			numCorrect += 1
 		} else {
 			numIncorrect += 1
 		}
 	}
-	return numCorrect, numIncorrect, numCorrect + numIncorrect, nil
+	ch <- newResult(numCorrect, numIncorrect, numCorrect+numIncorrect)
 }
 
 func main() {
@@ -56,13 +71,16 @@ func main() {
 	fmt.Printf("Press Enter to start the quiz app. You will have %d seconds to complete\n", *defaultTime)
 	fmt.Scanln(&userInput)
 
-	numCorrect, numIncorrect, total, err := quiz()
+	ch := make(chan *Result)
+	go quiz(ch)
 
-	if err != nil {
-		log.Fatal(err)
+	select {
+	case result := <-ch:
+		fmt.Printf("Number of correct Answers: %d\n", result.numCorrect)
+		fmt.Printf("Number of incorrect Answers: %d\n", result.numIncorrect)
+		fmt.Printf("Total number of questions: %d\n", result.total)
+	case <- time.After(time.Second * time.Duration(*defaultTime)):
+		fmt.Printf("Quiz timed out")
 	}
 
-	fmt.Printf("Number of correct Answers: %d\n", numCorrect)
-	fmt.Printf("Number of incorrect Answers: %d\n", numIncorrect)
-	fmt.Printf("Total number of questions: %d\n", total)
 }
