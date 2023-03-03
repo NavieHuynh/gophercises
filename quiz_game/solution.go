@@ -22,7 +22,21 @@ func newResult(total int) *Result{
 	return &r
 }
 
-func quiz(rows [][]string, result *Result, ch chan string) {
+func getQuizData(filename string) ([][]string, error){
+	// open file
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	defer f.Close()
+
+	// read rows in the file
+	csvReader := csv.NewReader(f)
+	return csvReader.ReadAll()
+}
+
+func startQuiz(rows [][]string, result *Result, ch chan string) {
 	var userInput string
 
 	for _, row := range rows {
@@ -43,18 +57,8 @@ func main() {
 	// get user defined timeout
 	defaultTime := flag.Int("timeout", 30, "specify timeout in seconds")
 	flag.Parse()
-
-	// open file
-	f, err := os.Open("problems.csv")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer f.Close()
-
-	// read rows in the file
-	csvReader := csv.NewReader(f)
-	rows, err := csvReader.ReadAll()
+	
+	rows, err := getQuizData("problems.csv")
 
 	if err != nil{
 		log.Fatal(err)
@@ -67,7 +71,7 @@ func main() {
 
 	// start quiz in goroutine
 	ch := make(chan string)
-	go quiz(rows, result, ch)
+	go startQuiz(rows, result, ch)
 
 	select {
 	case <-ch:
