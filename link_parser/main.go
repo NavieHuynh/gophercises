@@ -45,11 +45,12 @@ func getHref(node html.Token) string {
 }
 
 func parseHTMLlinks(text string) (data []Link) {
-	tkn := html.NewTokenizer(strings.NewReader(text))
 	var links []Link
 	var isLink bool
 	var href string
 	var linkText string
+
+	tkn := html.NewTokenizer(strings.NewReader(text))
 	for {
 		tt := tkn.Next()
 		switch {
@@ -85,7 +86,7 @@ func parseHTMLlinks(text string) (data []Link) {
 }
 
 func main() {
-	data, err := readHTMLFile("./ex2.html")
+	data, err := readHTMLFile("./ex3.html")
 
 	if err != nil {
 		log.Fatal(err)
